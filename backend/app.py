@@ -138,7 +138,8 @@ def model_status():
         "success": True,
         "providers": ai_manager.status(),
         "primary": "IBM Granite (watsonx.ai)",
-        "secondary": ["Google Gemini", "Groq"],
+        "secondary": ["Google Gemini"],
+        "disabled": ["Groq"],
     })
 
 

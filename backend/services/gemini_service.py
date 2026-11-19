@@ -90,10 +90,23 @@ class GeminiService:
                 except (IndexError, AttributeError, TypeError):
                     text = ""
             usage = getattr(response, "usage_metadata", None)
+            stripped = (text or "").strip()
+            if not stripped:
+                logger.warning("Gemini returned empty content")
+                return {
+                    "success": False,
+                    "text": "",
+                    "model": self.model_id,
+                    "provider": "gemini",
+                    "duration_ms": duration_ms,
+                    "prompt_tokens": getattr(usage, "prompt_token_count", 0) or 0,
+                    "completion_tokens": 0,
+                    "error": "Gemini returned empty response content",
+                }
             logger.debug(f"Gemini OK in {duration_ms}ms")
             return {
                 "success": True,
-                "text": (text or "").strip(),
+                "text": stripped,
                 "model": self.model_id,
                 "provider": "gemini",
                 "duration_ms": duration_ms,

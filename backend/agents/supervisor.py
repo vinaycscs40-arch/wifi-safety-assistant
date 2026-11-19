@@ -20,7 +20,7 @@ class SupervisorOrchestrator:
     1. Validate and understand the user request
     2. Assign task to Agent 1 (Risk Assessment) → IBM Granite
     3. Pass Agent 1 output to Agent 2 (Device Safety) → IBM Granite
-    4. Pass Agents 1+2 output to Agent 3 (Incident Response) → Groq/Gemini
+    4. Pass Agents 1+2 output to Agent 3 (Incident Response) → Gemini/Granite
     5. Consolidate all outputs into one unified response
     6. Log metrics and persist to database
     """
@@ -194,12 +194,28 @@ class SupervisorOrchestrator:
         checklist = a2.get("device_checklist", [])
         final_report = a3.get("final_report", {})
 
-        # Resolve any conflicting recommendations (supervisor decision)
-        # Rule: highest risk level wins if agents disagree
-        agent3_severity = a3.get("severity", risk)
+        # ── B4: Active conflict resolution ───────────────────────────────────
+        # Agent 3 may escalate severity based on detected incident scenario.
+        # Supervisor picks the highest risk level across all agents.
         severity_rank = {"CRITICAL": 4, "HIGH": 3, "MEDIUM": 2, "LOW": 1, "UNKNOWN": 0}
-        # Keep the higher severity
-        final_risk = risk  # already established by Agent 1
+        agent3_severity = a3.get("severity", risk)
+        final_risk = risk
+        if severity_rank.get(agent3_severity, 0) > severity_rank.get(risk, 0):
+            final_risk = agent3_severity
+            logger.info(
+                f"[Supervisor] Conflict resolution: escalated risk "
+                f"{risk} → {final_risk} (Agent 3 severity)"
+            )
+
+        # ── B8: Validate & sanitize final situation summary ───────────────────
+        summary_text = a3.get("situation_summary", a1.get("summary", ""))
+        if summary_text:
+            validated = self.guardrails.validate_output(summary_text, final_risk)
+            if not validated["valid"]:
+                logger.warning(
+                    f"[Supervisor] Output validation issues: {validated['issues']}"
+                )
+            summary_text = validated.get("sanitized_text", summary_text)
 
         return {
             "success": True,
@@ -225,7 +241,7 @@ class SupervisorOrchestrator:
             "incident_scenario": a3.get("incident_scenario",
                                         a3.get("identified_scenario", "general")),
             "incident_severity": a3.get("severity", risk),
-            "situation_summary": a3.get("situation_summary", ""),
+            "situation_summary": summary_text,
             "incident_immediate_steps": a3.get("immediate_steps",
                                                a3.get("immediate_response_steps", [])),
             "if_credentials_entered": a3.get("if_credentials_entered", ""),
@@ -263,10 +279,14 @@ class SupervisorOrchestrator:
 
     def _log_model_call(self, task_id: str, agent_output: Dict, agent_name: str):
         """Log AI model call metrics to database."""
+        provider = agent_output.get("provider", "unknown")
+        # Skip logging placeholder/none entries – they pollute analytics
+        if not provider or provider in ("none", "unknown"):
+            return
         try:
             self.db.log_model_call(
                 task_id=task_id,
-                provider=agent_output.get("provider", "unknown"),
+                provider=provider,
                 model_id=agent_output.get("model_used", "unknown"),
                 agent_name=agent_name,
                 duration_ms=agent_output.get("duration_ms", 0),

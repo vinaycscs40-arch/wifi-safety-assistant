@@ -226,10 +226,16 @@ class Guardrails:
                 inputs[field] = inputs[field][:max_len]
                 flags.append(f"field_truncated:{field}")
 
-        # 4. Sanitize (strip HTML entities)
+        # 4. Normalize and validate connection_type
+        raw_ct = inputs["connection_type"].lower().strip()
+        if raw_ct and raw_ct not in ALLOWED_CONNECTION_TYPES:
+            inputs["connection_type"] = "unknown"
+            flags.append("connection_type_normalized")
+
+        # 5. Sanitize (strip HTML entities)
         sanitized = {k: html.escape(v.strip()) for k, v in inputs.items()}
 
-        # 5. Prompt injection detection
+        # 6. Prompt injection detection
         full_text = " ".join(sanitized.values())
         for pat in INJECTION_PATTERNS:
             if pat.search(full_text):
@@ -240,7 +246,7 @@ class Guardrails:
                     "flags": ["prompt_injection"],
                 }
 
-        # 6. Dangerous request detection
+        # 7. Dangerous request detection
         for pat in DANGEROUS_PATTERNS:
             if pat.search(full_text):
                 logger.warning(f"Dangerous request from {client_ip}: {pat.pattern[:50]}")
@@ -253,7 +259,7 @@ class Guardrails:
                     "flags": ["dangerous_request"],
                 }
 
-        # 7. PII detection (flag but allow, with PII stripped)
+        # 8. PII detection (flag but allow, with PII stripped)
         pii_found = []
         for name, pat in PII_PATTERNS.items():
             # Only block passwords; flag others

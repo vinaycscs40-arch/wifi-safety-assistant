@@ -2,7 +2,7 @@
 Agent 3: Incident Response & Safety Guidance Agent
 Receives aggregated findings from Agents 1 & 2.
 Provides incident response, phishing awareness, and generates final safety report.
-Uses Groq (fast inference) with Gemini as backup; Granite for final report.
+Uses Gemini (secondary model) with Granite as backup.
 """
 import re
 import json
@@ -102,8 +102,8 @@ class IncidentResponseAgent:
     """
 
     AGENT_NAME = "Agent 3: Incident Response & Safety Guidance"
-    PRIMARY_PROVIDER = "groq"      # Fast inference for incident response
-    BACKUP_PROVIDER = "gemini"     # Backup if Groq unavailable
+    PRIMARY_PROVIDER = "gemini"    # Gemini for incident response (Groq disabled)
+    BACKUP_PROVIDER = "granite"    # Fallback to Granite if Gemini unavailable
 
     SYSTEM_PROMPT = """You are an incident response specialist for cybersecurity in India.
 You have received a complete risk assessment and device safety analysis.

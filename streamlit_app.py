@@ -360,7 +360,7 @@ elif page == "🔍 Risk Assessment":
             )
             connection_type = st.selectbox(
                 "Connection Type",
-                ["open", "wpa2", "wpa3", "captive_portal", "unknown"],
+                ["wpa2", "wpa3", "captive_portal", "unknown"],
                 index=0,
             )
         with col2:

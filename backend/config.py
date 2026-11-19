@@ -69,27 +69,18 @@ class Config:
 
     @classmethod
     def db_url(cls) -> str:
-        """Return SQLAlchemy DB URL. Falls back to SQLite if MySQL creds missing."""
-        if cls.MYSQL_PASSWORD and cls.MYSQL_HOST != "localhost":
+        """Return SQLAlchemy DB URL.
+
+        Uses MySQL only when MYSQL_HOST is explicitly set to a non-localhost
+        value AND a password is provided.  Otherwise skips the live probe and
+        returns SQLite immediately — avoiding slow connection errors at startup.
+        """
+        if cls.MYSQL_PASSWORD and cls.MYSQL_HOST not in ("", "localhost", "127.0.0.1"):
             return (
                 f"mysql+mysqlconnector://{cls.MYSQL_USER}:{cls.MYSQL_PASSWORD}"
                 f"@{cls.MYSQL_HOST}:{cls.MYSQL_PORT}/{cls.MYSQL_DATABASE}"
             )
-        try:
-            import mysql.connector  # noqa: F401
-            conn = mysql.connector.connect(
-                host=cls.MYSQL_HOST,
-                port=cls.MYSQL_PORT,
-                user=cls.MYSQL_USER,
-                password=cls.MYSQL_PASSWORD,
-            )
-            conn.close()
-            return (
-                f"mysql+mysqlconnector://{cls.MYSQL_USER}:{cls.MYSQL_PASSWORD}"
-                f"@{cls.MYSQL_HOST}:{cls.MYSQL_PORT}/{cls.MYSQL_DATABASE}"
-            )
-        except Exception:
-            return f"sqlite:///{cls.SQLITE_DB_PATH}"
+        return f"sqlite:///{cls.SQLITE_DB_PATH}"
 
 
 def setup_logging():

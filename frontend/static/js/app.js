@@ -583,3 +583,14 @@ function showError(msg) {
 // INIT
 // ════════════════════════════════════════════════════════════
 checkHealth();
+
+// B7: Refresh model status badges every 5 minutes so they don't go stale
+async function refreshModelStatus() {
+  try {
+    const r = await fetch(`${API_BASE}/api/models/status`);
+    if (!r.ok) return;
+    const data = await r.json();
+    if (data.success && data.providers) updateModelBadges(data.providers);
+  } catch (_) { /* non-critical */ }
+}
+setInterval(refreshModelStatus, 5 * 60 * 1000);

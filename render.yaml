@@ -1,0 +1,29 @@
+# Render deployment blueprint
+# https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: wifi-safety-assistant
+    runtime: python
+    region: singapore          # closest to Bengaluru
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn --chdir backend wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 120
+    envVars:
+      - key: FLASK_DEBUG
+        value: "False"
+      - key: FLASK_HOST
+        value: "0.0.0.0"
+      - key: ENABLE_GUARDRAILS
+        value: "true"
+      - key: LOG_LEVEL
+        value: "INFO"
+      - key: SQLITE_DB_PATH
+        value: "/tmp/wifi_safety.db"
+      # Set these as SECRET env vars in the Render dashboard:
+      # IBM_CLOUD_API_KEY
+      # IBM_WATSONX_PROJECT_ID
+      # IBM_WATSONX_URL
+      # IBM_GRANITE_MODEL_ID
+      # GOOGLE_GEMINI_API_KEY
+      # GEMINI_MODEL_ID
+      # FLASK_SECRET_KEY
